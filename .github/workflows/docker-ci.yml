@@ -37,17 +37,18 @@ jobs:
         DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
       run: |
         vars=(
-          DOCKERHUB_USERNAME
-          DOCKERHUB_TOKEN
+          $DOCKERHUB_USERNAME
+          $DOCKERHUB_TOKEN
         )
-        for var in ${vars[@]}; do
+
+        while IFS= read -r var; do
           if [[ -z ${var} ]]; then
             echo ::set-output name=secretspresent::false
             break
           else
             echo ::set-output name=secretspresent::true
           fi
-        done
+        done <<< "${vars[@]}"
       
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1.5.1
