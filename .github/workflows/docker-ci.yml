@@ -69,7 +69,7 @@ jobs:
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
           type=edge,priority=700,value=${{ github.event.client_payload.branch }}
-          type=raw,priority=200,value=${{ github.event.client_payload.sha }}
+          type=raw,priority=200,value=SHA${{ github.event.client_payload.sha }}
           type=semver,priority=900,pattern={{version}},value=${{ github.event.client_payload.ref }}
           type=match,pattern=master,group=0,value=${{ github.event.inputs.tag }}
     
