@@ -27,24 +27,19 @@ jobs:
       - name: Init
         id: init
         run: |
-          echo "::set-output name=repository_name::$(
-            echo '${{ github.repository }}' \
-            | awk -F '/' '{print $2}'
-          )"
-          
           git config --global user.name "${{ env.git_name }}"
           git config --global user.email "${{ env.git_email }}"
       
       - name: Get info
         id: facts
+        env:
+          GITHUB_TOKEN: ${{ secrets.PUBLIC_REPO_ACCESS_TOKEN }}
         run: |
-          type=$(
-            curl -sL --fail \
-              --header 'Accept: application/vnd.github.v3+json' \
-              -u ${{ github.actor }}:${{ secrets.BOT_TOKEN }} \
-              "${GITHUB_API_URL}/users/${{ github.actor }}" \
-            | jq -r -c '.type'
-          )
+          type="$(
+            gh api -H 'Accept: application/vnd.github.v3+json' \
+              --jq '.type' \
+              /users/${{ github.actor }}
+          )"
 
           case $type in
             User)
@@ -56,24 +51,25 @@ jobs:
           esac
 
           echo "::set-output name=branch::$(
-            curl -sL ${GITHUB_API_URL}/repos/${{ env.upstream }} \
-            | jq -r '.default_branch'
+            gh api -H 'Accept: application/vnd.github.v3+json' \
+              --jq '.default_branch' \
+              /repos/${{ env.upstream }}
           )"
           
           echo "::set-output name=built_tags::$(
-            curl -sL --fail \
-              --header 'Accept: application/vnd.github.v3+json' \
-              -u ${{ github.actor }}:${{ secrets.PUBLIC_REPO_ACCESS_TOKEN }} \
-              "${GITHUB_API_URL}/${type}/${{ github.repository_owner }}/packages/container/${{ steps.init.outputs.repository_name }}/versions" \
-            | jq -r -c '[ .[].metadata.container.tags[] | tojson ]'
+            gh api -H 'Accept: application/vnd.github.v3+json' \
+              --jq '[ .[].metadata.container.tags[] | tojson ]' \
+              /${type}/${{ github.repository_owner }}/packages/container/${{ github.event.repository.name }}/versions
           )"
       
       - name: Fetch upstream
         id: upstream
+        env:
+          GITHUB_TOKEN: ${{ secrets.PUBLIC_REPO_ACCESS_TOKEN }}
         run: |
           response_releases_latest=$(
-            curl -sL \
-            ${GITHUB_API_URL}/repos/${{ env.upstream }}/releases/latest
+            gh api -H 'Accept: application/vnd.github.v3+json' \
+            /repos/${{ env.upstream }}/releases/latest
           )
 
           echo "::set-output name=tag::$(
@@ -83,14 +79,11 @@ jobs:
           echo "::set-output name=tag_sha::$(
             jq -r '.target_commitish' <<< ${response_releases_latest}
           )"
-          
-          response_commits_branch=$(
-            curl -sL \
-              ${GITHUB_API_URL}/repos/${{ env.upstream }}/commits/${{ steps.facts.outputs.branch }}
-          )
 
           echo "::set-output name=sha::$(
-            jq -r '.sha' <<< ${response_commits_branch}
+            gh api -H 'Accept: application/vnd.github.v3+json' \
+              --jq '.sha' \
+              /repos/${{ env.upstream }}/commits/${{ steps.facts.outputs.branch }}
           )"
 
       - name: Extract metadata (tags, labels) for Docker
