@@ -10,6 +10,7 @@ env:
   git_email: 41898282+github-actions[bot]@users.noreply.github.com
   registry: ghcr.io
   upstream: ngoduykhanh/wireguard-ui
+  GITHUB_TOKEN: ${{ secrets.PUBLIC_REPO_ACCESS_TOKEN }}
 
 jobs:
   
@@ -29,11 +30,11 @@ jobs:
         run: |
           git config --global user.name "${{ env.git_name }}"
           git config --global user.email "${{ env.git_email }}"
+
+          echo "REPOSITORY_NAME=${GITHUB_REPOSITORY#*/}" >> $GITHUB_ENV
       
       - name: Get info
         id: facts
-        env:
-          GITHUB_TOKEN: ${{ secrets.PUBLIC_REPO_ACCESS_TOKEN }}
         run: |
           type="$(
             gh api -H 'Accept: application/vnd.github.v3+json' \
@@ -59,13 +60,11 @@ jobs:
           echo "::set-output name=built_tags::$(
             gh api -H 'Accept: application/vnd.github.v3+json' \
               --jq '[ .[].metadata.container.tags[] | tojson ]' \
-              /${type}/${{ github.repository_owner }}/packages/container/${{ github.event.repository.name }}/versions
+              /${type}/${{ github.repository_owner }}/packages/container/${{ env.REPOSITORY_NAME }}/versions
           )"
       
       - name: Fetch upstream
         id: upstream
-        env:
-          GITHUB_TOKEN: ${{ secrets.PUBLIC_REPO_ACCESS_TOKEN }}
         run: |
           response_releases_latest=$(
             gh api -H 'Accept: application/vnd.github.v3+json' \
